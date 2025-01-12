@@ -1,0 +1,16 @@
+*.pyc
+*.pyo
+*.pyd
+*.yml
+*.yaml
+*.json
+*.ini
+*.cfg
+*.conf
+*.log
+*.txt
+*.rst
+*.csv
+*.tsv
+*.whl
+dist/
