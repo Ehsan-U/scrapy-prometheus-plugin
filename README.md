@@ -13,4 +13,8 @@ pip install scrapy-prometheus-plugin
 ```bash
 PROMETHEUS_ENABLED = True
 PROMETHEUS_GATEWAY = http://localhost:9091
+
+EXTENSIONS = {
+   "scrapy_prometheus_plugin.ScrapyPrometheusExtension": 501
+}
 ```
