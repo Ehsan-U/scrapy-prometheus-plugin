@@ -16,7 +16,9 @@ class ScrapyPrometheusExtension:
         self.gateway = crawler.settings.get("PROMETHEUS_GATEWAY")
         if self.gateway is None:
             raise NotConfigured("PROMETHEUS_GATEWAY is missing")
-        
+        self.status_codes = crawler.settings.get("PROMETHEUS_STATUS_CODES", [200, 403])
+        if not isinstance(self.status_codes, list):
+            raise NotConfigured("PROMETHEUS_STATUS_CODES must be a list")
         self.registry = CollectorRegistry()
 
         self.spr_item_scraped = Gauge("spr_item_scraped", "...", labelnames=["spider"], registry=self.registry)
@@ -30,6 +32,7 @@ class ScrapyPrometheusExtension:
         self.spr_offsite_domains = Gauge("spr_offsite_domains", "...", labelnames=["spider"], registry=self.registry)
         self.spr_offsite_filtered = Gauge("spr_offsite_filtered", "...", labelnames=["spider"], registry=self.registry)
         self.spr_elapsed_time = Gauge("spr_elapsed_time", "...", labelnames=["spider"], registry=self.registry)
+        self.spr_response_mb = Gauge("spr_response_mb", "...", labelnames=["spider"], registry=self.registry)
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
@@ -45,8 +48,8 @@ class ScrapyPrometheusExtension:
             self.spr_request_count.labels(spider.name, method).set(self.crawler.stats.get_value(f"downloader/request_method_count/{method}", 0))
         self.spr_response_count.labels(spider.name).set(self.crawler.stats.get_value("response_received_count", 0))
 
-        status_counts = {k.split('/')[-1]: v for k, v in self.crawler.stats.get_stats().items() if k.startswith('downloader/response_status_count/')}
-        for status, count in status_counts.items():
+        for status in self.status_codes:
+            count = self.crawler.stats.get_value(f'downloader/response_status_count/{status}', 0)
             self.spr_response_status_count.labels(spider.name, status).set(count)
 
         self.spr_duplicate_filtered.labels(spider.name).set(self.crawler.stats.get_value("dupefilter/filtered", 0))
@@ -55,6 +58,7 @@ class ScrapyPrometheusExtension:
         self.spr_offsite_domains.labels(spider.name).set(self.crawler.stats.get_value("offsite/domains", 0))
         self.spr_offsite_filtered.labels(spider.name).set(self.crawler.stats.get_value("offsite/filtered", 0))
         self.spr_elapsed_time.labels(spider.name).set(self.crawler.stats.get_value("elapsed_time_seconds", 0))
+        self.spr_response_mb.labels(spider.name).set(self.crawler.stats.get_value("downloader/response_bytes", 0) / 1024 / 1024)
 
     def spider_closed(self, spider, reason):
         self.update_spr_metrics(spider)
